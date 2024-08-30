@@ -8,6 +8,11 @@ import (
 func Hello(logger logr.Logger) {
 	logger.V(1).Info("Debug: Entering Hello function")
 
+	if err := playwright.Install(&playwright.RunOptions{Verbose: true}); err != nil {
+		logger.Error(err, "Could not install playwright")
+		return
+	}
+
 	pw, err := playwright.Run()
 	if err != nil {
 		logger.Error(err, "could not start playwright")
