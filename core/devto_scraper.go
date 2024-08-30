@@ -2,12 +2,16 @@ package core
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/playwright-community/playwright-go"
 )
+
+const POPUP_CLOSER_TIMER = 3
 
 type DevToScraper struct {
 	logger logr.Logger
@@ -20,8 +24,10 @@ func NewDevToScraper(logger logr.Logger) *DevToScraper {
 func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 	d.logger.V(1).Info("Starting GetContent function")
 
+	targetURL := "https://dev.to/lucasnevespereira/build-your-own-linktree-with-go-and-github-pages-3fha"
+
 	d.logger.V(1).Info("Navigating to page")
-	if _, err := page.Goto("https://dev.to/lucasnevespereira/build-your-own-linktree-with-go-and-github-pages-3fha", playwright.PageGotoOptions{
+	if _, err := page.Goto(targetURL, playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 		Timeout:   playwright.Float(60000),
 	}); err != nil {
@@ -29,6 +35,26 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 		return nil, fmt.Errorf("could not goto: %v", err)
 	}
 	d.logger.V(1).Info("Page loaded")
+
+	d.logger.V(1).Info("Waiting for POPUP_CLOSER_TIMER to close popup")
+	time.Sleep(POPUP_CLOSER_TIMER * time.Second)
+
+	d.logger.V(1).Info("Attempting to close popup")
+	closePopupScript := `
+   	const closeButton = document.querySelector('button[aria-label="Close"]');
+   	if (closeButton) {
+   		closeButton.click();
+   		console.log("Popup closed");
+   	} else {
+   		console.log("No popup found");
+   	}
+   `
+	_, err := page.Evaluate(closePopupScript)
+	if err != nil {
+		d.logger.V(1).Error(err, "Failed to execute popup close script")
+		return nil, fmt.Errorf("could not close popup: %v", err)
+	}
+	d.logger.V(1).Info("Popup close script executed")
 
 	d.logger.V(1).Info("Getting title")
 	title, err := page.Locator("h1").TextContent()
@@ -55,8 +81,14 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 	d.logger.V(1).Info("Original content written to file")
 
 	d.logger.V(1).Info("Updating links")
-	baseURL := "https://dev.to"
-	updateScript := `
+	parsedURL, err := url.Parse(targetURL)
+	if err != nil {
+		d.logger.V(1).Error(err, "Failed to parse URL")
+		return nil, fmt.Errorf("could not parse URL: %v", err)
+	}
+	baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+
+	updateScript := fmt.Sprintf(`
    	const makeAbsolute = (baseURL, relativePath) => {
    		if (!relativePath || relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
    			return relativePath;
@@ -66,11 +98,11 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 
    	const links = document.querySelectorAll('a');
    	links.forEach(link => {
-   		link.href = makeAbsolute('` + baseURL + `', link.getAttribute('href'));
+   		link.href = makeAbsolute('%s', link.getAttribute('href'));
    	});
 
    	document.body.innerHTML;
-   `
+   `, baseURL)
 
 	updatedContentResult, err := page.Evaluate(updateScript)
 	if err != nil {
