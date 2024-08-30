@@ -5,7 +5,7 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func Hello(logger logr.Logger, showBrowser bool, site string) {
+func Hello(logger logr.Logger, showBrowser bool, site string, showLinks bool) {
 	logger.V(1).Info("Debug: Entering Hello function")
 
 	if err := playwright.Install(&playwright.RunOptions{Verbose: true}); err != nil {
@@ -31,7 +31,7 @@ func Hello(logger logr.Logger, showBrowser bool, site string) {
 	case "hacker-news":
 		siteScraper = NewHackerNewsScraper(logger)
 	case "dev-to":
-		siteScraper = NewDevToScraper(logger)
+		siteScraper = NewDevToScraper(logger, showLinks)
 	default:
 		logger.Error(nil, "Invalid site specified")
 		return

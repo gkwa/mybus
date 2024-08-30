@@ -14,11 +14,12 @@ import (
 const POPUP_CLOSER_TIMER = 3
 
 type DevToScraper struct {
-	logger logr.Logger
+	logger    logr.Logger
+	showLinks bool
 }
 
-func NewDevToScraper(logger logr.Logger) *DevToScraper {
-	return &DevToScraper{logger: logger}
+func NewDevToScraper(logger logr.Logger, showLinks bool) *DevToScraper {
+	return &DevToScraper{logger: logger, showLinks: showLinks}
 }
 
 func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
@@ -41,14 +42,14 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 
 	d.logger.V(1).Info("Attempting to close popup")
 	closePopupScript := `
-   	const closeButton = document.querySelector('button[aria-label="Close"]');
-   	if (closeButton) {
-   		closeButton.click();
-   		console.log("Popup closed");
-   	} else {
-   		console.log("No popup found");
-   	}
-   `
+		const closeButton = document.querySelector('button[aria-label="Close"]');
+		if (closeButton) {
+			closeButton.click();
+			console.log("Popup closed");
+		} else {
+			console.log("No popup found");
+		}
+	`
 	_, err := page.Evaluate(closePopupScript)
 	if err != nil {
 		d.logger.V(1).Error(err, "Failed to execute popup close script")
@@ -89,36 +90,65 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 	baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
 
 	updateScript := fmt.Sprintf(`
-   	const makeAbsolute = (baseURL, relativePath) => {
-   		if (!relativePath || relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-   			return relativePath;
-   		}
-   		return new URL(relativePath, baseURL).href;
-   	};
+		const makeAbsolute = (baseURL, relativePath) => {
+			if (!relativePath || relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+				return relativePath;
+			}
+			return new URL(relativePath, baseURL).href;
+		};
 
-   	const links = document.querySelectorAll('a');
-   	links.forEach(link => {
-   		link.href = makeAbsolute('%s', link.getAttribute('href'));
-   	});
+		const links = document.querySelectorAll('a');
+		const absoluteLinks = [];
+		links.forEach(link => {
+			const absoluteHref = makeAbsolute('%s', link.getAttribute('href'));
+			link.href = absoluteHref;
+			absoluteLinks.push(absoluteHref);
+		});
 
-   	document.body.innerHTML;
-   `, baseURL)
+		window.updatedContent = document.body.innerHTML;
+		window.absoluteLinks = absoluteLinks;
+	`, baseURL)
 
-	updatedContentResult, err := page.Evaluate(updateScript)
+	_, err = page.Evaluate(updateScript)
 	if err != nil {
 		d.logger.V(1).Error(err, "Failed to evaluate update script")
 		return nil, fmt.Errorf("could not evaluate update script: %v", err)
 	}
 	d.logger.V(1).Info("Links updated")
 
-	updatedContent, ok := updatedContentResult.(string)
-	if !ok {
-		d.logger.V(1).Error(nil, "Unexpected updated result type")
-		return nil, fmt.Errorf("unexpected updated result type")
+	updatedContent, err := page.Evaluate(`window.updatedContent`)
+	if err != nil {
+		d.logger.V(1).Error(err, "Failed to retrieve updated content")
+		return nil, fmt.Errorf("could not retrieve updated content: %v", err)
 	}
-	d.logger.V(1).Info("Updated content retrieved", "length", len(updatedContent))
 
-	err = os.WriteFile("updated_content.html", []byte(updatedContent), 0o644)
+	updatedContentStr, ok := updatedContent.(string)
+	if !ok {
+		d.logger.V(1).Error(nil, "Unexpected updated content type")
+		return nil, fmt.Errorf("unexpected updated content type")
+	}
+	d.logger.V(1).Info("Updated content retrieved", "length", len(updatedContentStr))
+
+	if d.showLinks {
+		links, err := page.Evaluate(`window.absoluteLinks`)
+		if err != nil {
+			d.logger.V(1).Error(err, "Failed to retrieve links")
+			return nil, fmt.Errorf("could not retrieve links: %v", err)
+		}
+
+		linksSlice, ok := links.([]interface{})
+		if !ok {
+			d.logger.V(1).Error(nil, "Unexpected links type")
+			return nil, fmt.Errorf("unexpected links type")
+		}
+
+		fmt.Println("Absolute links found on the page:")
+		for _, link := range linksSlice {
+			fmt.Println(link)
+		}
+	}
+
+	err = os.WriteFile("updated_content.html", []byte(updatedContentStr), 0o644)
 	if err != nil {
 		d.logger.V(1).Error(err, "Failed to write updated content to file")
 		return nil, fmt.Errorf("could not write updated content: %v", err)
@@ -126,7 +156,7 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 	d.logger.V(1).Info("Updated content written to file")
 
 	d.logger.V(1).Info("Splitting content into paragraphs")
-	paragraphs := strings.Split(updatedContent, "</p>")
+	paragraphs := strings.Split(updatedContentStr, "</p>")
 	content := []string{title}
 	for _, p := range paragraphs {
 		if strings.TrimSpace(p) != "" {

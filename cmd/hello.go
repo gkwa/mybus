@@ -8,6 +8,7 @@ import (
 var (
 	showBrowser bool
 	site        string
+	showLinks   bool
 )
 
 var helloCmd = &cobra.Command{
@@ -17,7 +18,7 @@ var helloCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := LoggerFrom(cmd.Context())
 		logger.Info("Running hello command")
-		core.Hello(logger, showBrowser, site)
+		core.Hello(logger, showBrowser, site, showLinks)
 	},
 }
 
@@ -25,4 +26,5 @@ func init() {
 	rootCmd.AddCommand(helloCmd)
 	helloCmd.Flags().BoolVar(&showBrowser, "show-browser", false, "Show browser during navigation")
 	helloCmd.Flags().StringVar(&site, "site", "hacker-news", "Site to scrape (hacker-news or dev-to)")
+	helloCmd.Flags().BoolVar(&showLinks, "show-links", false, "Show all absolute links on the page")
 }
