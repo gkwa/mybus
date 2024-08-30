@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var showBrowser bool
+
 var helloCmd = &cobra.Command{
 	Use:   "hello",
 	Short: "A brief description of your command",
@@ -12,10 +14,11 @@ var helloCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := LoggerFrom(cmd.Context())
 		logger.Info("Running hello command")
-		core.Hello(logger)
+		core.Hello(logger, showBrowser)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(helloCmd)
+	helloCmd.Flags().BoolVar(&showBrowser, "show-browser", false, "Show browser during navigation")
 }

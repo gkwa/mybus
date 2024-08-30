@@ -5,7 +5,7 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func Hello(logger logr.Logger) {
+func Hello(logger logr.Logger, showBrowser bool) {
 	logger.V(1).Info("Debug: Entering Hello function")
 
 	if err := playwright.Install(&playwright.RunOptions{Verbose: true}); err != nil {
@@ -24,7 +24,7 @@ func Hello(logger logr.Logger) {
 		}
 	}()
 
-	browserManager := NewBrowserManager(pw, logger)
+	browserManager := NewBrowserManager(pw, logger, showBrowser)
 	hackerNewsScraper := NewHackerNewsScraper(logger)
 	newsScraper := NewNewsScraper(logger, browserManager, hackerNewsScraper)
 

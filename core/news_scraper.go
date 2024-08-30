@@ -50,8 +50,10 @@ func (n *NewsScraper) ScrapeTopNews() error {
 		n.logger.Info(fmt.Sprintf("%d: %s", i+1, story))
 	}
 
-	// Add a delay to keep the browser open for 5 seconds
-	time.Sleep(5 * time.Second)
+	// Add a delay only if the browser is visible
+	if _, ok := n.browserManager.(*BrowserManager); ok && n.browserManager.(*BrowserManager).launchOption.GetLaunchOptions().Headless != nil && !*n.browserManager.(*BrowserManager).launchOption.GetLaunchOptions().Headless {
+		time.Sleep(5 * time.Second)
+	}
 
 	return nil
 }
