@@ -15,7 +15,7 @@ func NewHackerNewsScraper(logger logr.Logger) *HackerNewsScraper {
 	return &HackerNewsScraper{logger: logger}
 }
 
-func (h *HackerNewsScraper) GetTopStories(page playwright.Page) ([]string, error) {
+func (h *HackerNewsScraper) GetContent(page playwright.Page) ([]string, error) {
 	if _, err := page.Goto("https://news.ycombinator.com"); err != nil {
 		return nil, fmt.Errorf("could not goto: %v", err)
 	}

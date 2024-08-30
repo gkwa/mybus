@@ -5,20 +5,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var showBrowser bool
+var (
+	showBrowser bool
+	site        string
+)
 
 var helloCmd = &cobra.Command{
 	Use:   "hello",
-	Short: "A brief description of your command",
-	Long:  `A longer description that spans multiple lines and likely contains examples and usage of using your command.`,
+	Short: "Scrape content from specified site",
+	Long:  `Scrape content from either Hacker News or a specific Dev.to article.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logger := LoggerFrom(cmd.Context())
 		logger.Info("Running hello command")
-		core.Hello(logger, showBrowser)
+		core.Hello(logger, showBrowser, site)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(helloCmd)
 	helloCmd.Flags().BoolVar(&showBrowser, "show-browser", false, "Show browser during navigation")
+	helloCmd.Flags().StringVar(&site, "site", "hacker-news", "Site to scrape (hacker-news or dev-to)")
 }

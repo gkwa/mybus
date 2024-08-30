@@ -5,7 +5,7 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
-func Hello(logger logr.Logger, showBrowser bool) {
+func Hello(logger logr.Logger, showBrowser bool, site string) {
 	logger.V(1).Info("Debug: Entering Hello function")
 
 	if err := playwright.Install(&playwright.RunOptions{Verbose: true}); err != nil {
@@ -25,13 +25,24 @@ func Hello(logger logr.Logger, showBrowser bool) {
 	}()
 
 	browserManager := NewBrowserManager(pw, logger, showBrowser)
-	hackerNewsScraper := NewHackerNewsScraper(logger)
-	newsScraper := NewNewsScraper(logger, browserManager, hackerNewsScraper)
+	var siteScraper SiteScraperInterface
 
-	if err := newsScraper.ScrapeTopNews(); err != nil {
-		logger.Error(err, "Failed to scrape top news")
+	switch site {
+	case "hacker-news":
+		siteScraper = NewHackerNewsScraper(logger)
+	case "dev-to":
+		siteScraper = NewDevToScraper(logger)
+	default:
+		logger.Error(nil, "Invalid site specified")
+		return
 	}
 
-	logger.Info("Top news stories scraped successfully")
+	newsScraper := NewNewsScraper(logger, browserManager, siteScraper)
+
+	if err := newsScraper.ScrapeTopNews(); err != nil {
+		logger.Error(err, "Failed to scrape content")
+	}
+
+	logger.Info("Content scraped successfully")
 	logger.V(1).Info("Debug: Exiting Hello function")
 }

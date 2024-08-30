@@ -8,8 +8,8 @@ type NewsScraperInterface interface {
 	ScrapeTopNews() error
 }
 
-type HackerNewsScraperInterface interface {
-	GetTopStories(page playwright.Page) ([]string, error)
+type SiteScraperInterface interface {
+	GetContent(page playwright.Page) ([]string, error)
 }
 
 type BrowserManagerInterface interface {

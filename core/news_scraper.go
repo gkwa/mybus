@@ -8,20 +8,20 @@ import (
 )
 
 type NewsScraper struct {
-	logger            logr.Logger
-	browserManager    BrowserManagerInterface
-	hackerNewsScraper HackerNewsScraperInterface
+	logger         logr.Logger
+	browserManager BrowserManagerInterface
+	siteScraper    SiteScraperInterface
 }
 
 func NewNewsScraper(
 	logger logr.Logger,
 	browserManager BrowserManagerInterface,
-	hackerNewsScraper HackerNewsScraperInterface,
+	siteScraper SiteScraperInterface,
 ) *NewsScraper {
 	return &NewsScraper{
-		logger:            logger,
-		browserManager:    browserManager,
-		hackerNewsScraper: hackerNewsScraper,
+		logger:         logger,
+		browserManager: browserManager,
+		siteScraper:    siteScraper,
 	}
 }
 
@@ -41,13 +41,13 @@ func (n *NewsScraper) ScrapeTopNews() error {
 		return err
 	}
 
-	stories, err := n.hackerNewsScraper.GetTopStories(page)
+	content, err := n.siteScraper.GetContent(page)
 	if err != nil {
 		return err
 	}
 
-	for i, story := range stories {
-		n.logger.Info(fmt.Sprintf("%d: %s", i+1, story))
+	for i, item := range content {
+		n.logger.Info(fmt.Sprintf("%d: %s", i+1, item))
 	}
 
 	// Add a delay only if the browser is visible
