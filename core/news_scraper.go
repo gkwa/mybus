@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 )
@@ -48,6 +49,9 @@ func (n *NewsScraper) ScrapeTopNews() error {
 	for i, story := range stories {
 		n.logger.Info(fmt.Sprintf("%d: %s", i+1, story))
 	}
+
+	// Add a delay to keep the browser open for 5 seconds
+	time.Sleep(5 * time.Second)
 
 	return nil
 }

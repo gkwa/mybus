@@ -17,7 +17,9 @@ func NewBrowserManager(pw *playwright.Playwright, logger logr.Logger) *BrowserMa
 }
 
 func (b *BrowserManager) LaunchBrowser() (playwright.Browser, error) {
-	browser, err := b.pw.Chromium.Launch()
+	browser, err := b.pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(false), // This will show the browser
+	})
 	if err != nil {
 		return nil, fmt.Errorf("could not launch browser: %v", err)
 	}
