@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -35,20 +34,6 @@ func (n *NewsScraper) ScrapeTopNews() error {
 			n.logger.Error(err, "failed to close browser")
 		}
 	}()
-
-	page, err := n.browserManager.CreatePage(browser)
-	if err != nil {
-		return err
-	}
-
-	content, err := n.siteScraper.GetContent(page)
-	if err != nil {
-		return err
-	}
-
-	for i, item := range content {
-		n.logger.Info(fmt.Sprintf("%d: %s", i+1, item))
-	}
 
 	// Add a delay only if the browser is visible
 	if _, ok := n.browserManager.(*BrowserManager); ok && n.browserManager.(*BrowserManager).launchOption.GetLaunchOptions().Headless != nil && !*n.browserManager.(*BrowserManager).launchOption.GetLaunchOptions().Headless {
