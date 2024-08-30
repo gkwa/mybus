@@ -25,18 +25,39 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 		return nil, fmt.Errorf("could not get title: %v", err)
 	}
 
-	paragraphs, err := page.Locator("div.article-content p").All()
+	baseURL := "https://dev.to"
+	script := `
+		const makeAbsolute = (baseURL, relativePath) => {
+			if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+				return relativePath;
+			}
+			return new URL(relativePath, baseURL).href;
+		};
+
+		const paragraphs = Array.from(document.querySelectorAll('div.article-content p'));
+		paragraphs.forEach(p => {
+			const links = p.querySelectorAll('a');
+			links.forEach(link => {
+				link.href = makeAbsolute('` + baseURL + `', link.getAttribute('href'));
+			});
+		});
+
+		paragraphs.map(p => p.innerHTML);
+	`
+
+	result, err := page.Evaluate(script)
 	if err != nil {
-		return nil, fmt.Errorf("could not get paragraphs: %v", err)
+		return nil, fmt.Errorf("could not evaluate script: %v", err)
+	}
+
+	paragraphs, ok := result.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected result type")
 	}
 
 	content := []string{title}
 	for _, p := range paragraphs {
-		text, err := p.TextContent()
-		if err != nil {
-			return nil, fmt.Errorf("could not get paragraph text: %v", err)
-		}
-		content = append(content, text)
+		content = append(content, p.(string))
 	}
 
 	return content, nil
