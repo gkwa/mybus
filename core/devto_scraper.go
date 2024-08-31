@@ -14,12 +14,13 @@ import (
 const POPUP_CLOSER_TIMER = 3
 
 type DevToScraper struct {
-	logger    logr.Logger
-	showLinks bool
+	logger      logr.Logger
+	showLinks   bool
+	showBrowser bool
 }
 
-func NewDevToScraper(logger logr.Logger, showLinks bool) *DevToScraper {
-	return &DevToScraper{logger: logger, showLinks: showLinks}
+func NewDevToScraper(logger logr.Logger, showLinks, showBrowser bool) *DevToScraper {
+	return &DevToScraper{logger: logger, showLinks: showLinks, showBrowser: showBrowser}
 }
 
 func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
@@ -37,25 +38,27 @@ func (d *DevToScraper) GetContent(page playwright.Page) ([]string, error) {
 	}
 	d.logger.V(1).Info("Page loaded")
 
-	d.logger.V(1).Info("Waiting for POPUP_CLOSER_TIMER to close popup")
-	time.Sleep(POPUP_CLOSER_TIMER * time.Second)
+	if d.showBrowser {
+		d.logger.V(1).Info("Waiting for POPUP_CLOSER_TIMER to close popup")
+		time.Sleep(POPUP_CLOSER_TIMER * time.Second)
 
-	d.logger.V(1).Info("Attempting to close popup")
-	closePopupScript := `
-		const closeButton = document.querySelector('button[aria-label="Close"]');
-		if (closeButton) {
-			closeButton.click();
-			console.log("Popup closed");
-		} else {
-			console.log("No popup found");
+		d.logger.V(1).Info("Attempting to close popup")
+		closePopupScript := `
+			const closeButton = document.querySelector('button[aria-label="Close"]');
+			if (closeButton) {
+				closeButton.click();
+				console.log("Popup closed");
+			} else {
+				console.log("No popup found");
+			}
+		`
+		_, err := page.Evaluate(closePopupScript)
+		if err != nil {
+			d.logger.V(1).Error(err, "Failed to execute popup close script")
+			return nil, fmt.Errorf("could not close popup: %v", err)
 		}
-	`
-	_, err := page.Evaluate(closePopupScript)
-	if err != nil {
-		d.logger.V(1).Error(err, "Failed to execute popup close script")
-		return nil, fmt.Errorf("could not close popup: %v", err)
+		d.logger.V(1).Info("Popup close script executed")
 	}
-	d.logger.V(1).Info("Popup close script executed")
 
 	d.logger.V(1).Info("Getting title")
 	title, err := page.Locator("h1").TextContent()

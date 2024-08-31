@@ -31,7 +31,7 @@ func Hello(logger logr.Logger, showBrowser bool, site string, showLinks bool) {
 	case "hacker-news":
 		siteScraper = NewHackerNewsScraper(logger)
 	case "dev-to":
-		siteScraper = NewDevToScraper(logger, showLinks)
+		siteScraper = NewDevToScraper(logger, showLinks, showBrowser)
 	default:
 		logger.Error(nil, "Invalid site specified")
 		return
